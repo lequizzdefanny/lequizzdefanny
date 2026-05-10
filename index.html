@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizIA</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#f5f2eb;
+  --surface:#fffef9;
+  --border:#d6d0c4;
+  --border2:#b8b0a0;
+  --ink:#1a1814;
+  --muted:#7a7468;
+  --accent:#c8410a;
+  --accent2:#2d6a4f;
+  --accent3:#1d3557;
+  --win:#2d6a4f;
+  --fail:#c8410a;
+}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'JetBrains Mono',monospace;
+  min-height:100vh;
+}
+
+body::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:999;
+}
+
+.view{display:none;min-height:100vh;}
+.view.active{display:flex;}
+
+/* ─── LOGIN ─── */
+#loginView{align-items:center;justify-content:center;flex-direction:column;gap:2rem;padding:2rem;}
+
+.login-box{
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  box-shadow:4px 4px 0 var(--ink);
+  padding:2.5rem 3rem;
+  max-width:380px;
+  width:100%;
+}
+
+.brand{font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;letter-spacing:-0.03em;color:var(--ink);margin-bottom:0.2rem;}
+.brand span{color:var(--accent);}
+.brand-sub{font-size:0.72rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:2rem;}
+
+.field-label{font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem;display:block;}
+
+input[type="text"],input[type="password"],textarea,select{
+  width:100%;
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  color:var(--ink);
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.9rem;
+  padding:0.65rem 0.9rem;
+  outline:none;
+  border-radius:0;
+  transition:border-color 0.15s;
+}
+input:focus,textarea:focus{border-color:var(--ink);}
+textarea{resize:vertical;min-height:80px;line-height:1.5;}
+
+.btn{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:700;
+  letter-spacing:0.06em;text-transform:uppercase;
+  padding:0.65rem 1.3rem;
+  border:1.5px solid var(--ink);
+  background:var(--ink);color:var(--bg);
+  cursor:pointer;
+  transition:transform 0.1s,box-shadow 0.1s;
+  box-shadow:3px 3px 0 var(--border2);
+}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--border2);}
+.btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--border2);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;color:var(--ink);box-shadow:3px 3px 0 var(--border);}
+.btn-ghost:hover{box-shadow:4px 4px 0 var(--border);}
+.btn-danger{background:var(--fail);border-color:var(--fail);box-shadow:3px 3px 0 rgba(200,65,10,0.3);}
+.btn-sm{font-size:0.7rem;padding:0.4rem 0.8rem;box-shadow:2px 2px 0 var(--border2);}
+.btn-sm:hover{box-shadow:3px 3px 0 var(--border2);}
+.btn-full{width:100%;}
+
+.error-msg{font-size:0.78rem;color:var(--fail);margin-top:0.6rem;display:none;}
+
+/* ─── ADMIN ─── */
+#adminView{flex-direction:column;}
+
+.topbar{
+  background:var(--ink);color:var(--bg);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0.9rem 2rem;position:sticky;top:0;z-index:10;
+}
+.topbar-brand{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:-0.02em;}
+.topbar-brand span{color:var(--accent);}
+.topbar-actions{display:flex;gap:0.7rem;}
+.topbar .btn{padding:0.45rem 1rem;font-size:0.72rem;}
+
+.admin-body{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;min-height:0;}
+@media(max-width:860px){.admin-body{grid-template-columns:1fr;}}
+
+.admin-form-panel{padding:2rem;border-right:1.5px solid var(--border);overflow-y:auto;}
+
+.panel-title{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;
+  margin-bottom:1.5rem;display:flex;align-items:center;gap:0.6rem;
+}
+.panel-title .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+
+.form-group{margin-bottom:1.1rem;}
+
+.admin-list-panel{padding:2rem;overflow-y:auto;background:var(--surface);}
+.question-cards{display:flex;flex-direction:column;gap:1rem;}
+
+.q-card{
+  background:var(--bg);border:1.5px solid var(--border);
+  padding:1.1rem 1.2rem;position:relative;
+  box-shadow:2px 2px 0 var(--border);
+  transition:box-shadow 0.15s,transform 0.15s;
+}
+.q-card:hover{box-shadow:4px 4px 0 var(--border2);transform:translate(-1px,-1px);}
+.q-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;margin-bottom:0.6rem;}
+.q-card-text{font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;line-height:1.4;flex:1;}
+.q-card-id{font-size:0.65rem;color:var(--muted);letter-spacing:0.1em;white-space:nowrap;}
+.q-card-answer{font-size:0.75rem;color:var(--accent2);margin-bottom:0.7rem;}
+.q-card-answer span{color:var(--muted);}
+.q-card-actions{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;}
+
+.qr-thumb{
+  width:52px;height:52px;border:1.5px solid var(--border);
+  cursor:pointer;overflow:hidden;flex-shrink:0;background:#fff;
+}
+
+/* ─── QR MODAL ─── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(26,24,20,0.7);z-index:100;
+  align-items:center;justify-content:center;padding:1rem;
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  background:var(--surface);border:2px solid var(--ink);
+  box-shadow:6px 6px 0 var(--ink);
+  padding:2rem;max-width:420px;width:100%;text-align:center;
+}
+.modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:0.4rem;}
+.modal-q{font-size:0.82rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.5;}
+#modalQrContainer{display:flex;justify-content:center;margin-bottom:1.2rem;}
+.modal-url{font-size:0.68rem;color:var(--muted);word-break:break-all;margin-bottom:1.2rem;padding:0.5rem;background:var(--bg);border:1px solid var(--border);}
+.modal-actions{display:flex;gap:0.7rem;justify-content:center;}
+
+/* ─── PLAYER ─── */
+#playerView{align-items:center;justify-content:center;padding:1.5rem;flex-direction:column;}
+
+.player-card{
+  background:var(--surface);border:2px solid var(--ink);
+  box-shadow:5px 5px 0 var(--ink);
+  padding:2.5rem 2.8rem;max-width:540px;width:100%;
+}
+.player-badge{
+  display:inline-block;font-size:0.62rem;letter-spacing:0.2em;
+  text-transform:uppercase;background:var(--ink);color:var(--bg);
+  padding:4px 12px;margin-bottom:1.5rem;
+}
+.player-question{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;
+  line-height:1.3;margin-bottom:2rem;color:var(--ink);
+}
+
+.verdict-box{
+  margin-top:1rem;padding:1rem 1.2rem;border-left:4px solid transparent;
+  font-size:0.88rem;line-height:1.6;
+  opacity:0;transform:translateY(6px);
+  transition:opacity 0.3s,transform 0.3s;display:none;
+}
+.verdict-box.show{opacity:1;transform:translateY(0);display:block;}
+.verdict-box.win{background:rgba(45,106,79,0.07);border-color:var(--win);}
+.verdict-box.fail{background:rgba(200,65,10,0.07);border-color:var(--fail);}
+.verdict-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;margin-bottom:0.3rem;}
+.verdict-title.win{color:var(--win);}
+.verdict-title.fail{color:var(--fail);}
+.verdict-msg{color:var(--ink);}
+.verdict-reason{font-size:0.75rem;color:var(--muted);margin-top:0.4rem;font-style:italic;}
+.try-again-btn{margin-top:1rem;display:none;}
+
+.loading-dots span{display:inline-block;animation:blink 1.2s infinite;}
+.loading-dots span:nth-child(2){animation-delay:0.2s;}
+.loading-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes blink{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--muted);}
+.empty-state .icon{font-size:2.5rem;margin-bottom:0.8rem;}
+.empty-state p{font-size:0.82rem;}
+
+.toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  background:var(--ink);color:var(--bg);
+  font-size:0.78rem;padding:0.7rem 1.2rem;
+  z-index:200;opacity:0;transform:translateY(10px);
+  transition:opacity 0.3s,transform 0.3s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+
+.confetti-dot{
+  position:fixed;width:9px;height:9px;border-radius:2px;
+  pointer-events:none;z-index:300;
+  animation:conffly 1s ease-out forwards;
+}
+@keyframes conffly{
+  from{opacity:1;transform:translate(0,0) rotate(0deg);}
+  to{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--dr));}
+}
+
+/* ─── API KEY SETUP ─── */
+.api-notice{
+  background:rgba(200,65,10,0.07);border:1.5px solid var(--accent);
+  padding:1rem 1.2rem;margin-bottom:1.5rem;font-size:0.8rem;line-height:1.6;
+}
+.api-notice strong{color:var(--accent);}
+.api-notice a{color:var(--accent3);}
+</style>
+</head>
+<body>
+
+<!-- ══════════ LOGIN ══════════ -->
+<div class="view active" id="loginView">
+  <div class="login-box">
+    <div class="brand">Quiz<span>IA</span></div>
+    <div class="brand-sub">Interface administrateur</div>
+    <div class="form-group">
+      <label class="field-label">Mot de passe</label>
+      <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+      <div class="error-msg" id="pwdError">Mot de passe incorrect.</div>
+    </div>
+    <button class="btn btn-full" onclick="tryLogin()">Accéder →</button>
+  </div>
+</div>
+
+<!-- ══════════ ADMIN ══════════ -->
+<div class="view" id="adminView">
+  <div class="topbar">
+    <div class="topbar-brand">Quiz<span>IA</span> <span style="opacity:.4;font-weight:400;font-size:.8rem;">— Admin</span></div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="changePwd()">🔑 MDP</button>
+      <button class="btn btn-ghost btn-sm" onclick="changeApiKey()">⚙ Clé API</button>
+      <button class="btn btn-sm" onclick="logout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="admin-body">
+    <div class="admin-form-panel">
+      <div class="panel-title"><span class="dot"></span><span id="formPanelTitle">Nouvelle question</span></div>
+
+      <div class="form-group">
+        <label class="field-label">Question *</label>
+        <textarea id="fQuestion" rows="3" placeholder="Ex: Quelle est la capitale de l'Australie ?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="field-label">Réponse exacte *</label>
+        <input type="text" id="fAnswer" placeholder="Ex: Canberra"/>
+      </div>
+      <div class="form-group">
+        <label class="field-label">Message si bonne réponse</label>
+        <textarea id="fWinMsg" rows="2" placeholder="Ex: Bravo ! Canberra est bien la capitale, pas Sydney !"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="field-label">Message si mauvaise réponse</label>
+        <textarea id="fFailMsg" rows="2" placeholder="Ex: Non, ce n'est pas Sydney ! Cherchez encore…"></textarea>
+      </div>
+
+      <div style="display:flex;gap:.7rem;margin-top:1.5rem;">
+        <button class="btn" onclick="saveQuestion()">Enregistrer</button>
+        <button class="btn btn-ghost" id="cancelEditBtn" onclick="cancelEdit()" style="display:none;">Annuler</button>
+      </div>
+    </div>
+
+    <div class="admin-list-panel">
+      <div class="panel-title">
+        <span class="dot" style="background:var(--accent3)"></span>
+        <span>Questions <span id="qCount" style="font-weight:400;color:var(--muted)"></span></span>
+      </div>
+      <div class="question-cards" id="questionCards">
+        <div class="empty-state" id="emptyState">
+          <div class="icon">📭</div>
+          <p>Aucune question pour l'instant.<br>Créez-en une à gauche.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ PLAYER ══════════ -->
+<div class="view" id="playerView">
+  <div class="player-card">
+    <div class="player-badge">Quiz</div>
+    <div class="player-question" id="playerQuestion">Chargement…</div>
+
+    <div class="form-group">
+      <label class="field-label">Votre réponse</label>
+      <input type="text" id="playerAnswer" placeholder="Tapez votre réponse…" autocomplete="off"
+        onkeydown="if(event.key==='Enter')submitAnswer()"/>
+    </div>
+    <button class="btn btn-full" id="playerSubmitBtn" onclick="submitAnswer()">Valider →</button>
+
+    <div class="verdict-box" id="verdictBox">
+      <div class="verdict-title" id="verdictTitle"></div>
+      <div class="verdict-msg" id="verdictMsg"></div>
+      <div class="verdict-reason" id="verdictReason"></div>
+    </div>
+    <button class="btn btn-ghost btn-full try-again-btn" id="tryAgainBtn" onclick="resetPlayer()">↺ Réessayer</button>
+  </div>
+</div>
+
+<!-- ══════════ QR MODAL ══════════ -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">QR Code</div>
+    <div class="modal-q" id="modalQ"></div>
+    <div id="modalQrContainer"></div>
+    <div class="modal-url" id="modalUrl"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="downloadQr()">⬇ Télécharger</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════
+// localStorage helpers
+// ══════════════════════════════
+const LS_QUESTIONS = 'quizia_questions';
+const LS_PWD       = 'quizia_pwd';
+const LS_APIKEY    = 'quizia_apikey';
+const DEFAULT_PWD  = 'admin1234';
+
+function lsGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); } catch {}
+}
+
+function loadQuestions() {
+  try { return JSON.parse(lsGet(LS_QUESTIONS) || '[]'); } catch { return []; }
+}
+function saveQuestions(qs) {
+  lsSet(LS_QUESTIONS, JSON.stringify(qs));
+}
+function getStoredPwd()    { return lsGet(LS_PWD)    || DEFAULT_PWD; }
+function setStoredPwd(p)   { lsSet(LS_PWD, p); }
+function getApiKey()       { return lsGet(LS_APIKEY) || ''; }
+function setApiKey(k)      { lsSet(LS_APIKEY, k); }
+
+// ══════════════════════════════
+// STATE
+// ══════════════════════════════
+let questions = [];
+let editingId = null;
+let currentPlayerQ = null;
+let modalQrId = null;
+
+// ══════════════════════════════
+// ROUTING
+// ══════════════════════════════
+function getParam(key) {
+  return new URLSearchParams(window.location.search).get(key);
+}
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════
+// LOGIN
+// ══════════════════════════════
+function tryLogin() {
+  const pwd = document.getElementById('pwdInput').value;
+  if (pwd === getStoredPwd()) {
+    document.getElementById('pwdError').style.display = 'none';
+    questions = loadQuestions();
+    renderAdmin();
+    showView('adminView');
+  } else {
+    document.getElementById('pwdError').style.display = 'block';
+    document.getElementById('pwdInput').value = '';
+  }
+}
+
+function logout() {
+  document.getElementById('pwdInput').value = '';
+  showView('loginView');
+}
+
+function changePwd() {
+  const np = prompt('Nouveau mot de passe (min 4 caractères) :');
+  if (!np || np.length < 4) { toast('Mot de passe trop court.'); return; }
+  setStoredPwd(np);
+  toast('Mot de passe mis à jour ✓');
+}
+
+function changeApiKey() {
+  const current = getApiKey();
+  const k = prompt('Clé API Anthropic :', current);
+  if (k === null) return;
+  setApiKey(k.trim());
+  toast('Clé API enregistrée ✓');
+}
+
+// ══════════════════════════════
+// ADMIN – CRUD
+// ══════════════════════════════
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function saveQuestion() {
+  const q  = document.getElementById('fQuestion').value.trim();
+  const a  = document.getElementById('fAnswer').value.trim();
+  const wm = document.getElementById('fWinMsg').value.trim();
+  const fm = document.getElementById('fFailMsg').value.trim();
+  if (!q || !a) { toast('Question et réponse sont obligatoires.'); return; }
+
+  if (editingId) {
+    const idx = questions.findIndex(x => x.id === editingId);
+    if (idx !== -1) questions[idx] = { ...questions[idx], question:q, answer:a, winMsg:wm, failMsg:fm };
+    cancelEdit();
+  } else {
+    questions.push({ id: uid(), question:q, answer:a, winMsg:wm, failMsg:fm });
+    clearForm();
+  }
+  saveQuestions(questions);
+  renderAdmin();
+  toast('Question enregistrée ✓');
+}
+
+function clearForm() {
+  ['fQuestion','fAnswer','fWinMsg','fFailMsg'].forEach(id => document.getElementById(id).value = '');
+}
+
+function editQuestion(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  editingId = id;
+  document.getElementById('fQuestion').value = q.question;
+  document.getElementById('fAnswer').value   = q.answer;
+  document.getElementById('fWinMsg').value   = q.winMsg  || '';
+  document.getElementById('fFailMsg').value  = q.failMsg || '';
+  document.getElementById('formPanelTitle').textContent = 'Modifier la question';
+  document.getElementById('cancelEditBtn').style.display = '';
+  document.querySelector('.admin-form-panel').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function cancelEdit() {
+  editingId = null;
+  clearForm();
+  document.getElementById('formPanelTitle').textContent = 'Nouvelle question';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+function deleteQuestion(id) {
+  if (!confirm('Supprimer cette question ?')) return;
+  questions = questions.filter(x => x.id !== id);
+  saveQuestions(questions);
+  renderAdmin();
+  toast('Question supprimée.');
+}
+
+// ══════════════════════════════
+// ADMIN – RENDER
+// ══════════════════════════════
+function renderAdmin() {
+  const container = document.getElementById('questionCards');
+  const empty     = document.getElementById('emptyState');
+  document.getElementById('qCount').textContent = questions.length ? `(${questions.length})` : '';
+  container.querySelectorAll('.q-card').forEach(el => el.remove());
+
+  if (!questions.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  questions.forEach(q => {
+    const card = document.createElement('div');
+    card.className = 'q-card';
+    card.innerHTML = `
+      <div class="q-card-header">
+        <div class="q-card-text">${escHtml(q.question)}</div>
+        <div class="q-card-id">#${q.id.slice(-4).toUpperCase()}</div>
+      </div>
+      <div class="q-card-answer"><span>Réponse : </span>${escHtml(q.answer)}</div>
+      <div class="q-card-actions">
+        <div class="qr-thumb" id="qrthumb-${q.id}" title="Voir le QR code"></div>
+        <button class="btn btn-ghost btn-sm" onclick="editQuestion('${q.id}')">✏ Modifier</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuestion('${q.id}')">✕</button>
+        <button class="btn btn-sm" onclick="openQrModal('${q.id}')" style="margin-left:auto;">🔲 QR Code</button>
+      </div>
+    `;
+    container.appendChild(card);
+    const thumb = document.getElementById('qrthumb-' + q.id);
+    thumb.onclick = () => openQrModal(q.id);
+    renderQr(thumb, playerUrl(q.id), 50);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function playerUrl(id) {
+  return `${window.location.origin}${window.location.pathname}?q=${id}`;
+}
+
+function renderQr(container, url, size) {
+  container.innerHTML = '';
+  try {
+    new QRCode(container, {
+      text: url, width: size, height: size,
+      colorDark:'#1a1814', colorLight:'#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch { container.textContent = '?'; }
+}
+
+// ══════════════════════════════
+// QR MODAL
+// ══════════════════════════════
+function openQrModal(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  modalQrId = id;
+  document.getElementById('modalTitle').textContent = 'QR Code — #' + id.slice(-4).toUpperCase();
+  document.getElementById('modalQ').textContent = q.question;
+  const url = playerUrl(id);
+  document.getElementById('modalUrl').textContent = url;
+  const container = document.getElementById('modalQrContainer');
+  container.innerHTML = '';
+  renderQr(container, url, 220);
+  document.getElementById('qrModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('qrModal').classList.remove('open');
+  modalQrId = null;
+}
+
+function downloadQr() {
+  const canvas = document.querySelector('#modalQrContainer canvas');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  link.download = `qrcode-${modalQrId}.png`;
+  link.href = canvas.toDataURL();
+  link.click();
+}
+
+document.getElementById('qrModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ══════════════════════════════
+// PLAYER
+// ══════════════════════════════
+function initPlayer(id) {
+  questions = loadQuestions();
+  const q = questions.find(x => x.id === id);
+  if (!q) {
+    document.getElementById('playerQuestion').textContent = '❌ Question introuvable.';
+    document.getElementById('playerSubmitBtn').disabled = true;
+    showView('playerView');
+    return;
+  }
+  currentPlayerQ = q;
+  document.getElementById('playerQuestion').textContent = q.question;
+  showView('playerView');
+  setTimeout(() => document.getElementById('playerAnswer').focus(), 100);
+}
+
+async function submitAnswer() {
+  if (!currentPlayerQ) return;
+  const userAnswer = document.getElementById('playerAnswer').value.trim();
+  if (!userAnswer) return;
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    toast('Clé API non configurée — contactez l\'administrateur.');
+    return;
+  }
+
+  const btn = document.getElementById('playerSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dots"><span>●</span><span>●</span><span>●</span></span>';
+  document.getElementById('playerAnswer').disabled = true;
+
+  const q = currentPlayerQ;
+  const prompt = `Tu évalues la réponse d'un joueur à une question de quiz.
+Question : "${q.question}"
+Réponse attendue : "${q.answer}"
+Réponse du joueur : "${userAnswer}"
+
+Évalue si la réponse est correcte (exacte ou très proche : faute mineure, variante acceptable) ou fausse.
+Réponds UNIQUEMENT en JSON, sans rien d'autre :
+{"verdict":"correct"|"faux","explication":"une courte phrase"}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = data.content?.[0]?.text || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+    catch { parsed = { verdict:'faux', explication:"Impossible d'évaluer." }; }
+    showPlayerVerdict(parsed, q);
+  } catch(e) {
+    showPlayerVerdict({ verdict:'faux', explication: 'Erreur : ' + e.message }, q);
+  }
+
+  btn.textContent = 'Valider →';
+  btn.disabled = true;
+}
+
+function showPlayerVerdict({ verdict, explication }, q) {
+  const isWin = verdict === 'correct';
+  const box = document.getElementById('verdictBox');
+  document.getElementById('verdictTitle').textContent = isWin ? '🎉 Gagné !' : '❌ Essayez encore';
+  document.getElementById('verdictTitle').className   = 'verdict-title ' + (isWin ? 'win' : 'fail');
+  document.getElementById('verdictMsg').textContent   = isWin ? (q.winMsg || 'Bonne réponse !') : (q.failMsg || 'Ce n\'est pas la bonne réponse.');
+  document.getElementById('verdictReason').textContent = explication || '';
+  box.className = 'verdict-box show ' + (isWin ? 'win' : 'fail');
+  if (!isWin) document.getElementById('tryAgainBtn').style.display = 'block';
+  else confettiBurst();
+}
+
+function resetPlayer() {
+  document.getElementById('playerAnswer').value = '';
+  document.getElementById('playerAnswer').disabled = false;
+  document.getElementById('playerSubmitBtn').disabled = false;
+  document.getElementById('verdictBox').className = 'verdict-box';
+  document.getElementById('tryAgainBtn').style.display = 'none';
+  document.getElementById('playerAnswer').focus();
+}
+
+// ══════════════════════════════
+// UTILS
+// ══════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function confettiBurst() {
+  const colors = ['#c8410a','#2d6a4f','#1d3557','#e8c547','#c084fc'];
+  const cx = window.innerWidth/2, cy = window.innerHeight/2;
+  for (let i = 0; i < 36; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'confetti-dot';
+    const angle = Math.random()*Math.PI*2;
+    const dist  = 80 + Math.random()*200;
+    dot.style.cssText = `left:${cx}px;top:${cy}px;background:${colors[i%colors.length]};--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px;--dr:${Math.random()*360}deg;animation-duration:${0.7+Math.random()*0.5}s;`;
+    document.body.appendChild(dot);
+    setTimeout(() => dot.remove(), 1400);
+  }
+}
+
+// ══════════════════════════════
+// INIT
+// ══════════════════════════════
+(function() {
+  const qid = getParam('q');
+  if (qid) {
+    initPlayer(qid);
+  } else {
+    showView('loginView');
+    document.getElementById('pwdInput').focus();
+  }
+})();
+</script>
+</body>
+</html>
